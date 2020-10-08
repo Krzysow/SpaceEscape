@@ -21,6 +21,8 @@ public class Rocket : MonoBehaviour
     Rigidbody rigidBody;
     AudioSource audioSource;
 
+    bool godMode = false;
+
     enum State { Alive, Dying, Transcending }
     State state = State.Alive;
 
@@ -39,11 +41,29 @@ public class Rocket : MonoBehaviour
             RespondToThrustInput();
             RespondToRotateInput();
         }
+
+        if (Debug.isDebugBuild)
+        {
+            RespondToDebugKeys();
+        }
+    }
+
+    private void RespondToDebugKeys()
+    {
+        if (Input.GetKeyDown(KeyCode.L))
+        {
+            LoadNextLevel();
+        }
+
+        if (Input.GetKeyDown(KeyCode.C))
+        {
+            godMode = !godMode;
+        }
     }
 
     void OnCollisionEnter(Collision collision)
     {
-        if (state != State.Alive) { return; }
+        if (state != State.Alive || godMode) { return; }
 
         switch (collision.gameObject.tag)
         {
@@ -105,7 +125,7 @@ public class Rocket : MonoBehaviour
 
     private void RespondToRotateInput()
     {
-        rigidBody.freezeRotation = true; //manual control override
+        //rigidBody.freezeRotation = true; //manual control override
 
         float rotationThisFrame = rcsThrust * Time.deltaTime;
 
@@ -120,9 +140,12 @@ public class Rocket : MonoBehaviour
             transform.Rotate(-Vector3.forward * rotationThisFrame);
             isRotating = true;
         }
-        if (!isRotating)
-            rigidBody.angularVelocity = Vector3.zero;
 
-        rigidBody.freezeRotation = false; //physics resumed
+        if (!isRotating)
+        {
+            rigidBody.angularVelocity = Vector3.zero;
+        }
+
+        //rigidBody.freezeRotation = false; //physics resumed
     }
 }

@@ -21,7 +21,11 @@ public class Oscillator : MonoBehaviour
     void Update()
     {
         // protect against period = 0
-        if (period <= Mathf.Epsilon) { return; }
+        if (period <= Mathf.Epsilon)
+        {
+            return;
+        }
+
         float cycles = Time.time / period;
 
         const float tau = Mathf.PI * 2f;
