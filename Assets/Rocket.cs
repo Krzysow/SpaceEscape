@@ -21,10 +21,9 @@ public class Rocket : MonoBehaviour
     Rigidbody rigidBody;
     AudioSource audioSource;
 
-    bool godMode = false;
+    bool isTransitioning = false;
 
-    enum State { Alive, Dying, Transcending }
-    State state = State.Alive;
+    bool godMode = false;
 
     // Start is called before the first frame update
     void Start()
@@ -36,7 +35,7 @@ public class Rocket : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        if (state == State.Alive)
+        if (!isTransitioning)
         {
             RespondToThrustInput();
             RespondToRotateInput();
@@ -63,7 +62,7 @@ public class Rocket : MonoBehaviour
 
     void OnCollisionEnter(Collision collision)
     {
-        if (state != State.Alive || godMode) { return; }
+        if (isTransitioning || godMode) { return; }
 
         switch (collision.gameObject.tag)
         {
@@ -71,22 +70,32 @@ public class Rocket : MonoBehaviour
                 // do nothing
                 break;
             case "Finish":
-                state = State.Transcending;
-                audioSource.Stop();
-                mainEngineParticles.Stop();
-                audioSource.PlayOneShot(succes);
-                succesParticles.Play();
-                Invoke("LoadNextLevel", levelLoadDelay);
+                StartSuccessSequence();
                 break;
             default:
-                state = State.Dying;
-                audioSource.Stop();
-                mainEngineParticles.Stop();
-                audioSource.PlayOneShot(death);
-                deathParticles.Play();
-                Invoke("LoadFirstLevel", levelLoadDelay);
+                StartDeathSequence();
                 break;
         }
+    }
+
+    private void StartSuccessSequence()
+    {
+        isTransitioning = true;
+        audioSource.Stop();
+        mainEngineParticles.Stop();
+        audioSource.PlayOneShot(succes);
+        succesParticles.Play();
+        Invoke("LoadNextLevel", levelLoadDelay);
+    }
+
+    private void StartDeathSequence()
+    {
+        isTransitioning = true;
+        audioSource.Stop();
+        mainEngineParticles.Stop();
+        audioSource.PlayOneShot(death);
+        deathParticles.Play();
+        Invoke("LoadFirstLevel", levelLoadDelay);
     }
 
     private void LoadFirstLevel()
@@ -96,7 +105,9 @@ public class Rocket : MonoBehaviour
 
     private void LoadNextLevel()
     {
-        SceneManager.LoadScene(1);
+        int currentSceneIndex = SceneManager.GetActiveScene().buildIndex;
+        int nextSceneIndex = (currentSceneIndex + 1) % SceneManager.sceneCountInBuildSettings;
+        SceneManager.LoadScene(nextSceneIndex);
     }
 
     private void RespondToThrustInput()
@@ -107,9 +118,14 @@ public class Rocket : MonoBehaviour
         }
         else
         {
-            audioSource.Stop();
-            mainEngineParticles.Stop();
+            StopApplyingThrust();
         }
+    }
+
+    private void StopApplyingThrust()
+    {
+        audioSource.Stop();
+        mainEngineParticles.Stop();
     }
 
     private void ApplyThrust()
@@ -125,27 +141,21 @@ public class Rocket : MonoBehaviour
 
     private void RespondToRotateInput()
     {
-        //rigidBody.freezeRotation = true; //manual control override
-
-        float rotationThisFrame = rcsThrust * Time.deltaTime;
-
-        bool isRotating = false;
         if (Input.GetKey(KeyCode.A))
         {
-            transform.Rotate(Vector3.forward * rotationThisFrame);
-            isRotating = true;
+            RotateManually(rcsThrust * Time.deltaTime);
+
         }
         if (Input.GetKey(KeyCode.D))
         {
-            transform.Rotate(-Vector3.forward * rotationThisFrame);
-            isRotating = true;
+            RotateManually(-rcsThrust * Time.deltaTime);
         }
+    }
 
-        if (!isRotating)
-        {
-            rigidBody.angularVelocity = Vector3.zero;
-        }
-
-        //rigidBody.freezeRotation = false; //physics resumed
+    private void RotateManually(float rotationThisFrame)
+    {
+        rigidBody.freezeRotation = true; // take manual control of rotation
+        transform.Rotate(Vector3.forward * rotationThisFrame);
+        rigidBody.freezeRotation = false; //physics resumed
     }
 }
